@@ -1,0 +1,8 @@
+param: fundId
+level:
+  name: route
+  rank: 3
+fills: [breadcrumb, actions]
+layout:
+  slots:
+    tabs: required
