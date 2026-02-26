@@ -1,0 +1,8 @@
+level:
+  name: route
+  rank: 3
+fills: [menu]
+layout:
+  slots:
+    listActions:
+  default: index

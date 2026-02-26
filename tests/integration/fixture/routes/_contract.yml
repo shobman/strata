@@ -1,0 +1,9 @@
+level:
+  name: route
+  rank: 3
+layout:
+  slots:
+    menu: required
+    breadcrumb:
+    actions:
+  redirect: funds
