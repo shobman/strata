@@ -4,7 +4,8 @@
       "Bash(ls:*)",
       "Bash(pnpm install:*)",
       "Bash(pnpm approve-builds:*)",
-      "Bash(pnpm:*)"
+      "Bash(pnpm:*)",
+      "Bash(git commit:*)"
     ]
   }
 }
