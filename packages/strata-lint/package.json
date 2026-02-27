@@ -2,6 +2,26 @@
   "name": "@shobman/strata-lint",
   "version": "0.1.0",
   "description": "ESLint plugin for the Strata layout protocol",
+  "author": "Simon Hobman",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/shobman/strata.git",
+    "directory": "packages/strata-lint"
+  },
+  "homepage": "https://github.com/shobman/strata/tree/main/packages/strata-lint",
+  "keywords": [
+    "eslint",
+    "eslint-plugin",
+    "react",
+    "layout",
+    "slots",
+    "architecture",
+    "atomic-design"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",

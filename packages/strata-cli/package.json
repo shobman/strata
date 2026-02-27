@@ -2,6 +2,27 @@
   "name": "@shobman/strata-cli",
   "version": "0.1.0",
   "description": "Contract engine and CLI for the Strata layout protocol",
+  "author": "Simon Hobman",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/shobman/strata.git",
+    "directory": "packages/strata-cli"
+  },
+  "homepage": "https://github.com/shobman/strata/tree/main/packages/strata-cli",
+  "keywords": [
+    "react",
+    "layout",
+    "slots",
+    "contracts",
+    "cli",
+    "architecture",
+    "AI",
+    "atomic-design"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -32,7 +53,6 @@
   },
   "dependencies": {
     "commander": "^12.0.0",
-    "fast-glob": "^3.3.0",
     "js-yaml": "^4.1.0"
   },
   "devDependencies": {

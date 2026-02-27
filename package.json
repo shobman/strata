@@ -1,16 +1,24 @@
 {
   "name": "strata",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Composable layout protocol for React — named slots, enforceable contracts, AI-agent-ready architecture",
+  "author": "Simon Hobman",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/shobman/strata.git"
+  },
+  "homepage": "https://github.com/shobman/strata",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
     "designer:dev": "pnpm --filter designer dev",
     "designer:build": "pnpm --filter designer build"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "engines": {
+    "node": ">=18"
+  },
   "packageManager": "pnpm@10.20.0",
   "pnpm": {
     "onlyBuiltDependencies": [

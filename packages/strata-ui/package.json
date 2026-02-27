@@ -2,6 +2,25 @@
   "name": "@shobman/strata-ui",
   "version": "0.1.0",
   "description": "Composable layout protocol for React — named slot projection via portals",
+  "author": "Simon Hobman",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/shobman/strata.git",
+    "directory": "packages/strata-ui"
+  },
+  "homepage": "https://github.com/shobman/strata/tree/main/packages/strata-ui",
+  "keywords": [
+    "react",
+    "layout",
+    "slots",
+    "portals",
+    "architecture",
+    "atomic-design"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
