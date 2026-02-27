@@ -1,5 +1,9 @@
 # @shobman/strata-lint
 
+[![npm version](https://img.shields.io/npm/v/@shobman/strata-lint)](https://www.npmjs.com/package/@shobman/strata-lint)
+[![bundle size](https://img.shields.io/bundlephobia/minzip/@shobman/strata-lint)](https://bundlephobia.com/package/@shobman/strata-lint)
+[![license](https://img.shields.io/npm/l/@shobman/strata-lint)](../../LICENSE)
+
 ESLint plugin for the [Strata](../../README.md) layout protocol. Enforces import boundaries, catches inline chrome, and warns on missing required slot fills.
 
 ## Installation

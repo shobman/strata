@@ -1,5 +1,9 @@
 # @shobman/strata-cli
 
+[![npm version](https://img.shields.io/npm/v/@shobman/strata-cli)](https://www.npmjs.com/package/@shobman/strata-cli)
+[![bundle size](https://img.shields.io/bundlephobia/minzip/@shobman/strata-cli)](https://bundlephobia.com/package/@shobman/strata-cli)
+[![license](https://img.shields.io/npm/l/@shobman/strata-cli)](../../LICENSE)
+
 CLI toolchain and contract engine for the [Strata](../../README.md) layout protocol. Validates YAML contracts, generates TypeScript types, and scaffolds routes and components.
 
 ## Installation

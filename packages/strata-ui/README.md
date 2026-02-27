@@ -1,5 +1,9 @@
 # @shobman/strata-ui
 
+[![npm version](https://img.shields.io/npm/v/@shobman/strata-ui)](https://www.npmjs.com/package/@shobman/strata-ui)
+[![bundle size](https://img.shields.io/bundlephobia/minzip/@shobman/strata-ui)](https://bundlephobia.com/package/@shobman/strata-ui)
+[![license](https://img.shields.io/npm/l/@shobman/strata-ui)](../../LICENSE)
+
 Runtime components for the [Strata](../../README.md) layout protocol. Named slot projection via React portals with zero-context-rerender architecture.
 
 ## Installation
