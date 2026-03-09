@@ -2,7 +2,7 @@ import { RuleTester } from "eslint";
 import { describe, beforeEach } from "vitest";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import requiredSlotsRule from "../rules/required-slots.js";
+import contractFilledRule from "../rules/contract-filled.js";
 import { clearContractCache } from "../utils/contract-lookup.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -19,14 +19,13 @@ const ruleTester = new RuleTester({
   },
 });
 
-describe("strata/required-slots", () => {
+describe("strata/contract-filled", () => {
   beforeEach(() => {
     clearContractCache();
   });
 
-  ruleTester.run("required-slots", requiredSlotsRule, {
+  ruleTester.run("contract-filled", contractFilledRule, {
     valid: [
-      // 11. route filling all required ancestor slots → pass
       // routes/funds fills [menu], ancestor routes/ requires menu → pass
       {
         code: "export default function FundsPage() { return null; }",
@@ -42,22 +41,30 @@ describe("strata/required-slots", () => {
         code: "export default function X() { return null; }",
         filename: "/tmp/no-contract/index.tsx",
       },
-      // root route has no ancestors → no required ancestor slots → pass
+      // root route has no ancestors → pass
       {
         code: "export default function RootLayout() { return null; }",
         filename: join(fixtures, "routes/index.tsx"),
       },
-    ],
-
-    invalid: [
-      // 10. route missing required ancestor slot → warn
-      // routes/funds/[fundId] fills [breadcrumb, actions] but routes/ requires menu
-      // — the static hint correctly warns that this route doesn't fill menu itself
-      // (even though the funds sibling does — strata check handles chain resolution)
+      // routes/funds/[fundId] fills [breadcrumb, actions]
+      // - routes/ requires menu → covered by intermediate ancestor funds (fills: [menu])
+      // - routes/funds requires actions → covered by [fundId] directly
       {
         code: "export default function FundDetailPage() { return null; }",
         filename: join(fixtures, "routes/funds/[fundId]/index.tsx"),
-        errors: [{ messageId: "missingRequiredSlot" }],
+      },
+    ],
+
+    invalid: [
+      // routes/funds/[fundId]/details fills [breadcrumb] but:
+      // - [fundId] requires tabs → NOT filled by details, NOT filled by any intermediate
+      {
+        code: "export default function FundDetailsPage() { return null; }",
+        filename: join(
+          fixtures,
+          "routes/funds/[fundId]/details/index.tsx",
+        ),
+        errors: [{ messageId: "contractMissingFill" }],
       },
     ],
   });

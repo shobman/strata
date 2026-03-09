@@ -1,6 +1,6 @@
 import { parseContractFile } from "@shobman/strata-cli";
 import type { StrataContract } from "@shobman/strata-cli";
-import { existsSync } from "node:fs";
+import { existsSync, statSync } from "node:fs";
 import { join, dirname } from "node:path";
 
 export interface ContractInfo {
@@ -9,10 +9,17 @@ export interface ContractInfo {
 }
 
 // ---------------------------------------------------------------------------
-// Cache — persists for the duration of a lint run (same process).
+// Cache — persists for the ESLint server lifetime.
+// Each entry stores the parsed contract + the file mtime so we can
+// invalidate when the YAML file is edited without restarting ESLint.
 // ---------------------------------------------------------------------------
 
-const contractCache = new Map<string, StrataContract | null>();
+interface CacheEntry {
+  contract: StrataContract | null;
+  mtimeMs: number;
+}
+
+const contractCache = new Map<string, CacheEntry>();
 
 /**
  * Clear the contract cache. Exposed for testing.
@@ -22,25 +29,31 @@ export function clearContractCache(): void {
 }
 
 /**
- * Check for a _contract.yml at exactly this directory. Cached.
+ * Check for a _contract.yml at exactly this directory. Cached with mtime invalidation.
  */
 function getContractAt(dir: string): StrataContract | null {
-  if (contractCache.has(dir)) return contractCache.get(dir)!;
-
   const contractPath = join(dir, "_contract.yml");
-  if (existsSync(contractPath)) {
-    try {
-      const contract = parseContractFile(contractPath);
-      contractCache.set(dir, contract);
-      return contract;
-    } catch {
-      contractCache.set(dir, null);
-      return null;
-    }
+
+  if (!existsSync(contractPath)) {
+    contractCache.delete(dir);
+    return null;
   }
 
-  contractCache.set(dir, null);
-  return null;
+  const mtimeMs = statSync(contractPath).mtimeMs;
+  const cached = contractCache.get(dir);
+
+  if (cached && cached.mtimeMs === mtimeMs) {
+    return cached.contract;
+  }
+
+  try {
+    const contract = parseContractFile(contractPath);
+    contractCache.set(dir, { contract, mtimeMs });
+    return contract;
+  } catch {
+    contractCache.set(dir, { contract: null, mtimeMs });
+    return null;
+  }
 }
 
 /**

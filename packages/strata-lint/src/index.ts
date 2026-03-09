@@ -1,19 +1,25 @@
-import importBoundaryRule from "./rules/import-boundary.js";
-import noInlineChromeRule from "./rules/no-inline-chrome.js";
-import requiredSlotsRule from "./rules/required-slots.js";
+import rankViolationRule from "./rules/rank-violation.js";
+import contractFilledRule from "./rules/contract-filled.js";
+import contractOverfillRule from "./rules/contract-overfill.js";
+import routeFilledRule from "./rules/route-filled.js";
+import routeOverfillRule from "./rules/route-overfill.js";
 
 const plugin = {
   rules: {
-    "import-boundary": importBoundaryRule,
-    "no-inline-chrome": noInlineChromeRule,
-    "required-slots": requiredSlotsRule,
+    "rank-violation": rankViolationRule,
+    "contract-filled": contractFilledRule,
+    "contract-overfill": contractOverfillRule,
+    "route-filled": routeFilledRule,
+    "route-overfill": routeOverfillRule,
   },
   configs: {
     recommended: {
       rules: {
-        "strata/import-boundary": "error" as const,
-        "strata/no-inline-chrome": "warn" as const,
-        "strata/required-slots": "warn" as const,
+        "strata/rank-violation": "error" as const,
+        "strata/contract-filled": "warn" as const,
+        "strata/contract-overfill": "warn" as const,
+        "strata/route-filled": "warn" as const,
+        "strata/route-overfill": "warn" as const,
       },
     },
   },

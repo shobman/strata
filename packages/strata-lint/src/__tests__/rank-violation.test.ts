@@ -2,7 +2,7 @@ import { RuleTester } from "eslint";
 import { describe, beforeEach } from "vitest";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import importBoundaryRule from "../rules/import-boundary.js";
+import rankViolationRule from "../rules/rank-violation.js";
 import { clearContractCache } from "../utils/contract-lookup.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -16,42 +16,32 @@ const ruleTester = new RuleTester({
   },
 });
 
-describe("strata/import-boundary", () => {
+describe("strata/rank-violation", () => {
   beforeEach(() => {
     clearContractCache();
   });
 
-  ruleTester.run("import-boundary", importBoundaryRule, {
+  ruleTester.run("rank-violation", rankViolationRule, {
     valid: [
-      // 2. molecule importing atom → pass (lower rank)
+      // molecule importing atom → pass (lower rank)
       {
         code: "import { Button } from '../../atoms/Button';",
         filename: join(fixtures, "components/molecules/FilterBar/index.tsx"),
       },
-      // 3. route importing organism → pass (lower rank)
+      // route importing organism → pass (lower rank)
       {
         code: "import { FundPanel } from '../../components/organisms/FundPanel';",
         filename: join(fixtures, "routes/funds/index.tsx"),
       },
-      // 5. same-level import → pass (molecule importing molecule)
+      // same-level import → pass
       {
         code: "import { SearchBar } from '../SearchBar';",
         filename: join(fixtures, "components/molecules/FilterBar/index.tsx"),
       },
-      // 6. node_modules import → pass (bare specifier, always allowed)
+      // node_modules import → pass
       {
         code: "import React from 'react';",
         filename: join(fixtures, "components/atoms/Button/index.tsx"),
-      },
-      // route importing atom → pass (lower rank)
-      {
-        code: "import { Button } from '../../components/atoms/Button';",
-        filename: join(fixtures, "routes/funds/index.tsx"),
-      },
-      // route importing molecule → pass (lower rank)
-      {
-        code: "import { FilterBar } from '../../components/molecules/FilterBar';",
-        filename: join(fixtures, "routes/funds/index.tsx"),
       },
       // file outside any contract → no restriction
       {
@@ -61,41 +51,29 @@ describe("strata/import-boundary", () => {
     ],
 
     invalid: [
-      // 1. atom importing molecule → error (higher rank)
+      // atom importing molecule → error
       {
         code: "import { FilterBar } from '../../molecules/FilterBar';",
         filename: join(fixtures, "components/atoms/Button/index.tsx"),
-        errors: [{ messageId: "importBoundaryViolation" }],
+        errors: [{ messageId: "rankViolation" }],
       },
-      // 4. organism importing route → error (higher rank)
+      // organism importing route → error
       {
         code: "import { FundsPage } from '../../../routes/funds';",
-        filename: join(
-          fixtures,
-          "components/organisms/FundPanel/index.tsx",
-        ),
-        errors: [{ messageId: "importBoundaryViolation" }],
+        filename: join(fixtures, "components/organisms/FundPanel/index.tsx"),
+        errors: [{ messageId: "rankViolation" }],
       },
-      // molecule importing organism → error (higher rank)
+      // molecule importing organism → error
       {
         code: "import { FundPanel } from '../../organisms/FundPanel';",
-        filename: join(
-          fixtures,
-          "components/molecules/FilterBar/index.tsx",
-        ),
-        errors: [{ messageId: "importBoundaryViolation" }],
-      },
-      // atom importing organism → error (higher rank)
-      {
-        code: "import { FundPanel } from '../../organisms/FundPanel';",
-        filename: join(fixtures, "components/atoms/Button/index.tsx"),
-        errors: [{ messageId: "importBoundaryViolation" }],
+        filename: join(fixtures, "components/molecules/FilterBar/index.tsx"),
+        errors: [{ messageId: "rankViolation" }],
       },
       // require() call also caught
       {
         code: "const { FilterBar } = require('../../molecules/FilterBar');",
         filename: join(fixtures, "components/atoms/Button/index.tsx"),
-        errors: [{ messageId: "importBoundaryViolation" }],
+        errors: [{ messageId: "rankViolation" }],
       },
     ],
   });

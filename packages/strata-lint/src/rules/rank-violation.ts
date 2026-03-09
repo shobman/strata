@@ -2,15 +2,15 @@ import type { Rule } from "eslint";
 import { resolve, dirname } from "node:path";
 import { findContractForFile, findContractForPath } from "../utils/contract-lookup.js";
 
-const importBoundaryRule: Rule.RuleModule = {
+const rankViolationRule: Rule.RuleModule = {
   meta: {
     type: "problem",
     docs: {
       description: "Prevent importing from higher-rank Strata levels",
     },
     messages: {
-      importBoundaryViolation:
-        "Cannot import from '{{importedLevel}}' (rank {{importedRank}}) into '{{currentLevel}}' (rank {{currentRank}}). Import boundary violation.",
+      rankViolation:
+        "Cannot import from '{{importedLevel}}' (rank {{importedRank}}) into '{{currentLevel}}' (rank {{currentRank}}). Rank violation.",
     },
     schema: [],
   },
@@ -33,7 +33,7 @@ const importBoundaryRule: Rule.RuleModule = {
       const resolvedPath = resolve(importerDir, source);
 
       const importedInfo = findContractForPath(resolvedPath);
-      if (!importedInfo) return; // no contract = no restriction
+      if (!importedInfo) return;
 
       const currentRank = currentInfo.contract.level.rank;
       const importedRank = importedInfo.contract.level.rank;
@@ -46,7 +46,7 @@ const importBoundaryRule: Rule.RuleModule = {
       if (importedRank >= currentRank) {
         context.report({
           node,
-          messageId: "importBoundaryViolation",
+          messageId: "rankViolation",
           data: {
             importedLevel,
             importedRank: String(importedRank),
@@ -81,4 +81,4 @@ const importBoundaryRule: Rule.RuleModule = {
   },
 };
 
-export default importBoundaryRule;
+export default rankViolationRule;
