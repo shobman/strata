@@ -1,6 +1,6 @@
 {
   "name": "@shobman/strata-lint",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "ESLint plugin for the Strata layout protocol",
   "author": "Simon Hobman",
   "license": "MIT",

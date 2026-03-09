@@ -1,12 +1,13 @@
-import { existsSync, writeFileSync } from "node:fs";
-import { join, resolve, relative, dirname } from "node:path";
+import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { join, resolve, relative, dirname, extname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { execSync, spawn } from "node:child_process";
+import { execSync } from "node:child_process";
+import { buildContractTree } from "../contracts/walk.js";
+import type { ContractNode } from "../contracts/types.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-import { buildContractTree } from "../contracts/walk.js";
-import type { ContractNode } from "../contracts/types.js";
 
 // ANSI colours
 const GREEN = "\x1b[32m";
@@ -66,27 +67,16 @@ function toArchitectNode(node: ContractNode, routesRoot?: string): ArchitectNode
   };
 }
 
-/**
- * Find the strata-architect package directory.
- * Looks for it as a sibling package (monorepo) or in node_modules.
- */
-function findArchitectDir(): string | null {
-  // Sibling package in monorepo
-  const monorepo = join(__dirname, "..", "..", "strata-architect");
-  if (existsSync(join(monorepo, "package.json"))) return monorepo;
-
-  // Installed as a package
-  try {
-    const resolved = require.resolve("@shobman/strata-architect/package.json");
-    return join(resolved, "..");
-  } catch {
-    return null;
-  }
-}
+const MIME_TYPES: Record<string, string> = {
+  ".html": "text/html",
+  ".js": "application/javascript",
+  ".css": "text/css",
+  ".json": "application/json",
+};
 
 /**
- * Run `strata architect` — generate tree.json, start the architect dev server,
- * and open the browser.
+ * Run `strata architect` — generate tree.json, start a lightweight HTTP server
+ * serving the pre-built architect UI, and open the browser.
  */
 export function runArchitect(rootDir: string): void {
   console.log(`\n${BOLD}strata architect${RESET}\n`);
@@ -103,71 +93,109 @@ export function runArchitect(rootDir: string): void {
   writeFileSync(treeFile, JSON.stringify(architectTree, null, 2) + "\n", "utf-8");
   console.log(`  ${GREEN}\u2713${RESET} Generated tree.json`);
 
-  // 2. Find the architect package
-  const architectDir = findArchitectDir();
-  if (!architectDir) {
-    console.error(
-      "strata-architect package not found.\n" +
-      "Install it or ensure it exists as a sibling package.",
-    );
+  // 2. Locate the pre-built UI files (bundled in dist/architect-ui/)
+  const uiDir = join(__dirname, "architect-ui");
+  if (!existsSync(join(uiDir, "index.html"))) {
+    console.error("Architect UI files not found. Rebuild strata-cli.");
     process.exit(1);
   }
 
-  // 3. Check if deps are installed
-  if (!existsSync(join(architectDir, "node_modules"))) {
-    console.log("  Installing architect dependencies...");
-    execSync("npm install", { cwd: architectDir, stdio: "inherit" });
-  }
-
-  // 4. Start Vite dev server and capture the port from output
   const projectPath = resolve(rootDir);
 
-  const vite = spawn("npx", ["vite"], {
-    cwd: architectDir,
-    stdio: ["inherit", "pipe", "pipe"],
-    shell: true,
-  });
+  // 3. Start HTTP server
+  const server = createServer((req: IncomingMessage, res: ServerResponse) => {
+    const url = new URL(req.url ?? "/", "http://localhost");
 
-  let browserOpened = false;
+    // API: GET/POST /api/tree?project=...
+    if (url.pathname === "/api/tree") {
+      const project = url.searchParams.get("project");
+      if (!project) {
+        res.writeHead(400, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: "Missing ?project= parameter" }));
+        return;
+      }
 
-  function handleOutput(chunk: Buffer): void {
-    const text = chunk.toString();
-    process.stdout.write(text);
+      const treePath = join(project, "tree.json");
 
-    // Strip ANSI codes and parse the port from Vite's output
-    if (!browserOpened) {
-      const stripped = text.replace(/\x1b\[[0-9;]*m/g, "");
-      const match = stripped.match(/localhost:(\d+)/);
-      if (match) {
-        browserOpened = true;
-        const port = match[1];
-        const url = `http://localhost:${port}/?project=${encodeURIComponent(projectPath)}`;
-        console.log(`\n  Opening ${url}\n`);
-
-        // Windows `start` needs an empty title argument before the URL
-        if (process.platform === "win32") {
-          try {
-            execSync(`start "" "${url}"`, { stdio: "ignore" });
-          } catch {
-            console.log(`  Open manually: ${url}`);
-          }
-        } else {
-          const openCmd = process.platform === "darwin" ? "open" : "xdg-open";
-          try {
-            execSync(`${openCmd} "${url}"`, { stdio: "ignore" });
-          } catch {
-            console.log(`  Open manually: ${url}`);
-          }
+      if (req.method === "GET") {
+        if (!existsSync(treePath)) {
+          res.writeHead(404, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ error: "tree.json not found" }));
+          return;
         }
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(readFileSync(treePath, "utf-8"));
+        return;
+      }
+
+      if (req.method === "POST") {
+        let body = "";
+        req.on("data", (chunk: Buffer) => (body += chunk));
+        req.on("end", () => {
+          try {
+            const data = JSON.parse(body);
+            writeFileSync(treePath, JSON.stringify(data, null, 2) + "\n", "utf-8");
+            res.writeHead(200, { "Content-Type": "application/json" });
+            res.end(JSON.stringify({ ok: true }));
+          } catch (e) {
+            res.writeHead(400, { "Content-Type": "application/json" });
+            res.end(JSON.stringify({ error: (e as Error).message }));
+          }
+        });
+        return;
       }
     }
-  }
 
-  vite.stdout!.on("data", handleOutput);
-  vite.stderr!.on("data", handleOutput);
+    // Static files: serve from architect-ui/
+    let filePath = url.pathname === "/" ? "/index.html" : url.pathname;
+    const fullPath = join(uiDir, filePath);
 
-  // Keep running until user kills it
-  vite.on("close", (code) => {
-    process.exit(code ?? 0);
+    if (!existsSync(fullPath)) {
+      // SPA fallback — serve index.html for any unknown path
+      const indexPath = join(uiDir, "index.html");
+      const content = readFileSync(indexPath, "utf-8");
+      res.writeHead(200, { "Content-Type": "text/html" });
+      res.end(content);
+      return;
+    }
+
+    const ext = extname(fullPath);
+    const contentType = MIME_TYPES[ext] ?? "application/octet-stream";
+    res.writeHead(200, { "Content-Type": contentType });
+    res.end(readFileSync(fullPath));
   });
+
+  // Find an available port starting from 5174
+  let port = 5174;
+  server.on("error", (err: NodeJS.ErrnoException) => {
+    if (err.code === "EADDRINUSE") {
+      port++;
+      server.listen(port);
+    }
+  });
+
+  server.on("listening", () => {
+    const url = `http://localhost:${port}/?project=${encodeURIComponent(projectPath)}`;
+    console.log(`  Serving at ${url}\n`);
+
+    // Open browser
+    if (process.platform === "win32") {
+      try {
+        execSync(`start "" "${url}"`, { stdio: "ignore" });
+      } catch {
+        console.log(`  Open manually: ${url}`);
+      }
+    } else {
+      const openCmd = process.platform === "darwin" ? "open" : "xdg-open";
+      try {
+        execSync(`${openCmd} "${url}"`, { stdio: "ignore" });
+      } catch {
+        console.log(`  Open manually: ${url}`);
+      }
+    }
+
+    console.log(`  Press Ctrl+C to stop\n`);
+  });
+
+  server.listen(port);
 }
