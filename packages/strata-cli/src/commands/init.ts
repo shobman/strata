@@ -32,11 +32,33 @@ function ensureFile(filePath: string, content: string, label: string): boolean {
 }
 
 /**
+ * Detect the source root directory. If `src/` exists, scaffold inside it.
+ * Otherwise scaffold at the project root (greenfield projects).
+ */
+function detectSourceRoot(rootDir: string): string {
+  const srcDir = join(rootDir, "src");
+  if (existsSync(srcDir)) {
+    return srcDir;
+  }
+  return rootDir;
+}
+
+/**
  * Run `strata init` in the given root directory.
  * Idempotent — doesn't overwrite existing files.
+ *
+ * Detects existing `src/` directories and scaffolds inside them,
+ * supporting both greenfield and existing projects.
  */
 export function runInit(rootDir: string): void {
   console.log(`\n${BOLD}strata init${RESET}\n`);
+
+  const sourceRoot = detectSourceRoot(rootDir);
+  const isInsideSrc = sourceRoot !== rootDir;
+
+  if (isInsideSrc) {
+    console.log(`  Detected ${BOLD}src/${RESET} directory — scaffolding inside it\n`);
+  }
 
   // 1. Component directories with contracts
   const components: Array<{
@@ -49,22 +71,22 @@ export function runInit(rootDir: string): void {
   ];
 
   for (const { dir, level } of components) {
-    const dirPath = join(rootDir, dir);
+    const dirPath = join(sourceRoot, dir);
     mkdirSync(dirPath, { recursive: true });
     ensureFile(
       join(dirPath, "_contract.yml"),
       componentContractYaml(level),
-      `${dir}/_contract.yml`,
+      `${isInsideSrc ? "src/" : ""}${dir}/_contract.yml`,
     );
   }
 
   // 2. Routes root contract
-  const routesDir = join(rootDir, "routes");
+  const routesDir = join(sourceRoot, "routes");
   mkdirSync(routesDir, { recursive: true });
   ensureFile(
     join(routesDir, "_contract.yml"),
     routeContractYaml({}),
-    "routes/_contract.yml",
+    `${isInsideSrc ? "src/" : ""}routes/_contract.yml`,
   );
 
   // 3. Skill file → .claude/skills/STRATA-SKILL.md

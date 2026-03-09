@@ -4,6 +4,9 @@ import { runCheck, findProjectRoot } from "./commands/check.js";
 import { runBuild } from "./commands/build.js";
 import { runAddRoute, runAddComponent } from "./commands/add.js";
 import type { AddRouteOptions } from "./commands/add.js";
+import { runTree } from "./commands/tree.js";
+import { runSync } from "./commands/sync.js";
+import { runArchitect } from "./commands/architect.js";
 
 const COMPONENT_LEVELS = ["atom", "molecule", "organism"] as const;
 
@@ -50,6 +53,43 @@ program
   .action(() => {
     const root = findProjectRoot(process.cwd());
     runBuild(root);
+  });
+
+// ---------------------------------------------------------------------------
+// strata tree
+// ---------------------------------------------------------------------------
+
+program
+  .command("tree")
+  .description("Display the route/slot tree (--json for strata-architect format)")
+  .option("--json", "Output as JSON for strata-architect")
+  .action((options: { json?: boolean }) => {
+    const root = findProjectRoot(process.cwd());
+    runTree(root, !!options.json);
+  });
+
+// ---------------------------------------------------------------------------
+// strata sync
+// ---------------------------------------------------------------------------
+
+program
+  .command("sync <file>")
+  .description("Sync a tree.json file to route contracts and stubs")
+  .action((file: string) => {
+    const root = findProjectRoot(process.cwd());
+    runSync(root, file);
+  });
+
+// ---------------------------------------------------------------------------
+// strata architect
+// ---------------------------------------------------------------------------
+
+program
+  .command("architect")
+  .description("Open the visual route/slot architect in the browser")
+  .action(() => {
+    const root = findProjectRoot(process.cwd());
+    runArchitect(root);
   });
 
 // ---------------------------------------------------------------------------

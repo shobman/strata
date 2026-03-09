@@ -36,6 +36,17 @@ function toPascalCase(segment: string): string {
     .join("");
 }
 
+/**
+ * Detect the source root directory. If `src/` exists, scaffold inside it.
+ */
+function detectSourceRoot(rootDir: string): string {
+  const srcDir = join(rootDir, "src");
+  if (existsSync(srcDir)) {
+    return srcDir;
+  }
+  return rootDir;
+}
+
 export interface AddRouteOptions {
   fills?: string;
   slots?: string;
@@ -58,10 +69,13 @@ export function runAddRoute(
   const segments = routePath.replace(/\\/g, "/").split("/").filter(Boolean);
   const lastSegment = segments[segments.length - 1];
   const componentName = toPascalCase(lastSegment);
+  const sourceRoot = detectSourceRoot(rootDir);
+  const isInsideSrc = sourceRoot !== rootDir;
+  const prefix = isInsideSrc ? "src/" : "";
 
   console.log(`\n${BOLD}strata add route${RESET} ${routePath}\n`);
 
-  const fullDir = join(rootDir, "routes", ...segments);
+  const fullDir = join(sourceRoot, "routes", ...segments);
   mkdirSync(fullDir, { recursive: true });
 
   // Auto-detect param from bracket segment
@@ -81,7 +95,7 @@ export function runAddRoute(
   // 1. Create _contract.yml
   const contractPath = join(fullDir, "_contract.yml");
   if (existsSync(contractPath)) {
-    logExists(`routes/${segments.join("/")}/_contract.yml`);
+    logExists(`${prefix}routes/${segments.join("/")}/_contract.yml`);
   } else {
     const yaml = routeContractYaml({
       param,
@@ -91,26 +105,26 @@ export function runAddRoute(
       redirect: options.redirect,
     });
     writeFileSync(contractPath, yaml, "utf-8");
-    logCreated(`routes/${segments.join("/")}/_contract.yml`);
+    logCreated(`${prefix}routes/${segments.join("/")}/_contract.yml`);
   }
 
   // 2. Create index.tsx stub (with FillSlot boilerplate)
   const indexPath = join(fullDir, "index.tsx");
   if (existsSync(indexPath)) {
-    logExists(`routes/${segments.join("/")}/index.tsx`);
+    logExists(`${prefix}routes/${segments.join("/")}/index.tsx`);
   } else {
     writeFileSync(indexPath, pageStub(componentName, fills), "utf-8");
-    logCreated(`routes/${segments.join("/")}/index.tsx`);
+    logCreated(`${prefix}routes/${segments.join("/")}/index.tsx`);
   }
 
   // 3. If --slots provided, create _layout.tsx
   if (slots.length > 0) {
     const layoutPath = join(fullDir, "_layout.tsx");
     if (existsSync(layoutPath)) {
-      logExists(`routes/${segments.join("/")}/_layout.tsx`);
+      logExists(`${prefix}routes/${segments.join("/")}/_layout.tsx`);
     } else {
       writeFileSync(layoutPath, layoutStub(componentName, slots), "utf-8");
-      logCreated(`routes/${segments.join("/")}/_layout.tsx`);
+      logCreated(`${prefix}routes/${segments.join("/")}/_layout.tsx`);
     }
   }
 
@@ -130,7 +144,10 @@ export function runAddComponent(
   name: string,
 ): void {
   const levelDir = level + "s"; // atom → atoms, molecule → molecules, etc.
-  const componentDir = join(rootDir, "components", levelDir, name);
+  const sourceRoot = detectSourceRoot(rootDir);
+  const isInsideSrc = sourceRoot !== rootDir;
+  const prefix = isInsideSrc ? "src/" : "";
+  const componentDir = join(sourceRoot, "components", levelDir, name);
 
   console.log(`\n${BOLD}strata add ${level}${RESET} ${name}\n`);
 
@@ -138,23 +155,23 @@ export function runAddComponent(
 
   // Create _contract.yml for the component level directory (if missing)
   const levelContractPath = join(
-    rootDir,
+    sourceRoot,
     "components",
     levelDir,
     "_contract.yml",
   );
   if (!existsSync(levelContractPath)) {
     writeFileSync(levelContractPath, componentContractYaml(level), "utf-8");
-    logCreated(`components/${levelDir}/_contract.yml`);
+    logCreated(`${prefix}components/${levelDir}/_contract.yml`);
   }
 
   // Create component index.tsx
   const indexPath = join(componentDir, "index.tsx");
   if (existsSync(indexPath)) {
-    logExists(`components/${levelDir}/${name}/index.tsx`);
+    logExists(`${prefix}components/${levelDir}/${name}/index.tsx`);
   } else {
     writeFileSync(indexPath, componentStub(name, level), "utf-8");
-    logCreated(`components/${levelDir}/${name}/index.tsx`);
+    logCreated(`${prefix}components/${levelDir}/${name}/index.tsx`);
   }
 
   console.log("");

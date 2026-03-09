@@ -86,20 +86,36 @@ function walkComponentDir(dirPath: string): ContractNode | null {
  *
  * Both are optional. If routes/ doesn't exist, tree.routes is null.
  */
+/**
+ * Detect source root — if `src/` contains routes or components, use it.
+ */
+function detectSourceRoot(rootDir: string): string {
+  const srcDir = join(rootDir, "src");
+  if (
+    existsSync(srcDir) &&
+    (existsSync(join(srcDir, "routes")) || existsSync(join(srcDir, "components")))
+  ) {
+    return srcDir;
+  }
+  return rootDir;
+}
+
 export function buildContractTree(rootDir: string): ContractTree {
+  const sourceRoot = detectSourceRoot(rootDir);
+
   const tree: ContractTree = {
     routes: null,
     components: [],
   };
 
   // Walk routes/
-  const routesDir = join(rootDir, "routes");
+  const routesDir = join(sourceRoot, "routes");
   if (existsSync(routesDir) && statSync(routesDir).isDirectory()) {
     tree.routes = walkDirectory(routesDir, null);
   }
 
   // Walk components/
-  const componentsDir = join(rootDir, "components");
+  const componentsDir = join(sourceRoot, "components");
   if (existsSync(componentsDir) && statSync(componentsDir).isDirectory()) {
     let entries: string[];
     try {
