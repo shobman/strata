@@ -1,15 +1,49 @@
 # Strata Skill — AI Agent Rules for Layout Architecture
 
-## Project Setup
+## Purpose
 
-This skill file was placed here by `strata init`. It lives in your project so it's version-controlled and customisable. The Strata CLI (`@shobman/strata-cli`) provides structural tooling:
+Strata is a design system that forces consistent UX across every page of an application. It separates **layout chrome** (titles, actions, tabs, filters) from **page content** (tables, forms, cards) using contracts and slots. This prevents AI agents from drifting on UX — every page looks right because no page controls its own chrome.
 
-- `strata check` — validate all contracts (runs in CI)
-- `strata build` — generate TypeScript types from YAML contracts
-- `strata add route <path>` — scaffold a new route with contract and stub
-- `strata add <level> <Name>` — scaffold a new component at the correct level
+## How It Works
 
-The Strata Architect visual designer (`docs/strata-architect.jsx`) provides an interactive view of the full route/slot architecture. Refer to it for understanding the layout tree, but always treat `_contract.yml` files as the source of truth.
+```
+_contract.yml  →  declares what a route fills and what slots it provides
+_layout.tsx    →  owns chrome rendering (SlotProvider + SlotTarget + Outlet)
+index.tsx      →  fills slots + renders content (FillSlot + page body)
+```
+
+The contract is the **source of truth**. Write it first. The linter enforces everything after.
+
+---
+
+## Contract-First Workflow
+
+**Always write the contract before writing any TSX.**
+
+1. Decide what this route IS — does it fill ancestor slots? does it declare its own slots for children?
+2. Create `_contract.yml` with `fills` and optionally `layout.slots`
+3. Run `strata check` — the contract rules validate it against ancestors
+4. Write the TSX — the route rules will warn until every fill is implemented
+
+This order matters. The contract forces you to think about the page's role in the layout hierarchy before writing a single line of UI code.
+
+---
+
+## Slot Escalation — When to Create Slots
+
+A piece of UI should become a slot when:
+
+- It appears in **the same visual position** across multiple routes (e.g. page title, action buttons)
+- It needs to render **outside the content area** (sticky header, sidebar, footer bar)
+- Changing it in one place should change the **rendering container** everywhere
+
+A piece of UI should stay inline when:
+
+- It's unique to this page
+- It renders within the content flow
+- It doesn't need consistent positioning across pages
+
+**The test:** If an AI building a new page would need to copy CSS positioning from another page to place this element, it should be a slot instead.
 
 ---
 
@@ -17,184 +51,269 @@ The Strata Architect visual designer (`docs/strata-architect.jsx`) provides an i
 
 1. Find `_contract.yml` in your target folder
 2. Walk UP the folder tree reading each ancestor `_contract.yml`
-3. You now know: your level, your slots, your fills, all available ancestor slots
+3. You now know: your level, your fills, all available ancestor slots
 
-If there is no `_contract.yml`, this is an unconstrained location. Build simply. If you need slots or structure, create a contract first.
+If there is no `_contract.yml`, create one first. Every route needs a contract.
 
 ---
 
-## Route Component Rules
+## Route Components (index.tsx)
 
-### Filling Slots
+When building a route component:
 
-When generating a route component:
-
-- Read your `_contract.yml` `fills` array — these are the slots you MUST provide content for
-- For each fill, use `<FillSlot name="slotName">` to project content
-- Main content renders as direct JSX children (flows into `<Outlet />`)
-- **NEVER** render buttons, action bars, sidebars, toolbars, or navigation chrome directly — declare them in slot fills
+- Read your `_contract.yml` `fills` array — these are the slots you MUST fill
+- For each fill, render `<FillSlot name="slotName">` with content
+- Everything else renders as direct page content
+- **Never** position UI chrome (titles, actions, toolbars) with CSS — fill a slot
 
 ```tsx
-// ✅ CORRECT — actions declared in slot
-const PerformancePage = () => (
-  <>
-    <FillSlot name="tabs">
-      <TabStrip items={['Returns', 'Benchmark', 'Risk']} />
-    </FillSlot>
-    <FillSlot name="actions">
-      <Button variant="primary">Run Benchmark</Button>
-      <Button variant="ghost">Compare Peers</Button>
-    </FillSlot>
-    <PerformanceCharts fundId={fundId} />
-  </>
-);
+export function DevicesPage() {
+  return (
+    <>
+      <FillSlot name="route-title">
+        <h1>Devices</h1>
+      </FillSlot>
+      <FillSlot name="route-actions">
+        <Button onClick={handleNew}>+ New Device</Button>
+      </FillSlot>
+      <FillSlot name="filter-panel">
+        <FilterBar filters={filters} onChange={updateSearch} />
+      </FillSlot>
 
-// ❌ WRONG — inline action bar breaks layout contract
-const PerformancePage = () => (
-  <div>
-    <div className="action-bar">
-      <Button>Run Benchmark</Button>
-    </div>
-    <PerformanceCharts fundId={fundId} />
-  </div>
-);
+      <VirtualTable columns={deviceColumns} queryResult={result} />
+    </>
+  );
+}
 ```
 
-### Layout Components
+The `VirtualTable` renders in the content area. The title, actions, and filters project into the layout shell's sticky zones. The page never decides WHERE any of this renders.
 
-When generating a layout component (`_layout.tsx`):
+---
+
+## Layout Components (_layout.tsx)
+
+When building a layout component:
 
 - Read `_contract.yml` `layout.slots` — these are the slot targets you render
-- Wrap everything in `<SlotProvider>`
+- Wrap in `<SlotProvider>`
 - Use `<SlotTarget name="slotName" />` for each declared slot
-- Wrap slot targets in appropriate chrome (panels, headers, sidebars)
-- Render `<Outlet />` for child content
-- If a slot has `required` status, the slot target can render without a fallback — validation ensures it's always filled
-- If a slot is not required, wrap its container conditionally — `SlotTarget` returns null when empty
+- Render `<Outlet />` for child route content
+- Position slot targets in the appropriate chrome zones (header, sidebar, sticky bar)
 
 ```tsx
-const FundDetailLayout = () => (
-  <SlotProvider>
-    <header>
-      <SlotTarget name="breadcrumb" />
-    </header>
-    <nav>
-      <SlotTarget name="tabs" />
-    </nav>
-    <div className="content-area">
-      <main>
-        <Outlet />
-      </main>
-      <aside>
-        <SlotTarget name="contextPanel" />
-      </aside>
-    </div>
-    <footer className="action-bar">
-      <SlotTarget name="actions" />
-    </footer>
-  </SlotProvider>
-);
+export function PageLayout({ children }) {
+  return (
+    <SlotProvider>
+      <header>
+        <SlotTarget name="route-title" />
+        <SlotTarget name="route-actions" />
+      </header>
+      <nav>
+        <SlotTarget name="tabs" />
+      </nav>
+      <SlotTarget name="filter-panel" />
+      <main>{children}</main>
+    </SlotProvider>
+  );
+}
 ```
 
 ### Self-Filling Slots
 
-A layout can fill its own slots as a baseline. Check the `fills` array — if it includes a slot name that's also in `layout.slots`, the layout provides its own default content for that slot.
+A layout can fill its own slots as defaults. Children override by mounting their own `<FillSlot>` — the deepest fill wins.
 
-```tsx
-// _contract.yml says: fills: [listActions], layout.slots: [listActions]
-const FundsLayout = () => (
-  <SlotProvider>
-    <FillSlot name="listActions">
-      <Button>Default Actions</Button>
-    </FillSlot>
-    <SlotTarget name="listActions" />
-    <Outlet />
-  </SlotProvider>
-);
+---
+
+## Rank Boundaries
+
+Components are ranked by complexity. Lower ranks cannot import higher ranks.
+
+| Level | Rank | Can import |
+|-------|------|-----------|
+| atom | 0 | nothing from hierarchy |
+| molecule | 1 | atoms only |
+| organism | 2 | atoms, molecules |
+| route | 3 | atoms, molecules, organisms |
+
+An organism importing from a route is always wrong. A molecule importing from an organism is always wrong.
+
+---
+
+## Folder Structure
+
+Contracts and implementations are co-located:
+
+```
+src/
+├── routes/
+│   ├── _contract.yml          # root layout contract
+│   ├── _layout.tsx            # root layout (SlotProvider + SlotTargets)
+│   ├── _layout.module.css
+│   ├── dashboard/
+│   │   ├── _contract.yml
+│   │   └── index.tsx
+│   ├── devices/
+│   │   ├── _contract.yml
+│   │   ├── index.tsx          # list page
+│   │   ├── new/
+│   │   │   ├── _contract.yml
+│   │   │   └── index.tsx
+│   │   └── [id]/
+│   │       ├── _contract.yml
+│   │       └── index.tsx
+│   └── reports/
+│       ├── _contract.yml
+│       ├── _layout.tsx        # intermediate layout (tabs)
+│       ├── devices/
+│       │   ├── _contract.yml
+│       │   └── index.tsx
+│       └── services/
+│           ├── _contract.yml
+│           └── index.tsx
+├── components/
+│   ├── atoms/
+│   │   ├── _contract.yml
+│   │   ├── Button.tsx
+│   │   └── Input.tsx
+│   ├── molecules/
+│   │   ├── _contract.yml
+│   │   └── StatusBadge.tsx
+│   └── organisms/
+│       ├── _contract.yml
+│       ├── VirtualTable.tsx
+│       └── FilterBar.tsx
+├── infrastructure/            # hooks, API clients, utilities
+└── types/                     # TypeScript type definitions
 ```
 
-Children override this when they mount their own `<FillSlot name="listActions">`.
+**Key conventions:**
+- Route folders mirror URL structure exactly
+- `_contract.yml` sits next to its `index.tsx` or `_layout.tsx`
+- Components live under `components/` with their level's `_contract.yml`
+- Non-component code (hooks, utils, API clients) goes in `infrastructure/`
 
 ---
 
-## Import Boundary Rules
+## Adding Routes
 
-Check `_contract.yml` at both the importing and imported locations.
+Prefer `strata add route <path>` which scaffolds contract + stub:
 
-| Your level | Can import from |
-|-----------|----------------|
-| atom (0) | Nothing from component hierarchy |
-| molecule (1) | atoms only |
-| organism (2) | atoms and molecules |
-| route (3) | atoms, molecules, and organisms |
+```bash
+strata add route devices/[id] --fills route-title,route-actions --param id
+```
 
-**NEVER** import from a higher rank. An organism importing from a route component is always wrong.
+If building manually:
+1. Create the folder under the correct parent in `src/routes/`
+2. Create `_contract.yml` first — decide fills and slots
+3. Create `index.tsx` (or `_layout.tsx` if it declares slots)
+4. Run `strata check` and `strata build`
 
 ---
 
-## Slot Accountability
+## Adding Components
 
-For every ancestor slot available to you (walk up the `_contract.yml` chain):
+Prefer `strata add <level> <Name>`:
 
-- **Fill it** — add to your `fills` array, provide `<FillSlot>` content
-- **Skip it** — deliberately not filling. Ancestor's fill (or empty) persists
+```bash
+strata add molecule SearchBar
+```
 
-Do not silently ignore slots. Every available slot should be a conscious decision.
+If building manually:
+1. Determine the level: primitive (atom), composition (molecule), feature block (organism)
+2. Create it in `src/components/<level>s/`
+3. Verify imports respect rank boundaries
+4. Components don't know about slots — that's the route's job
+
+---
+
+## Lint Rules
+
+Five rules enforce the system:
+
+| Rule | Layer | What it catches |
+|------|-------|----------------|
+| `strata/contract-filled` | Contract | Required ancestor slot missing from fills chain |
+| `strata/contract-overfill` | Contract | Fill references a slot that no ancestor declares |
+| `strata/route-filled` | Implementation | Contract says fill X, but TSX has no `<FillSlot name="X">` |
+| `strata/route-overfill` | Implementation | TSX has `<FillSlot name="X">` but contract doesn't list X in fills |
+| `strata/rank-violation` | Architecture | Import from equal or higher rank level |
+
+The contract rules validate YAML against YAML. The route rules validate TSX against its own YAML. Neither crosses the boundary.
+
+---
+
+## Adopting Strata in an Existing Project
+
+If you're adding Strata to a project that already has pages and components:
+
+1. Run `strata init` — creates contract stubs and skill file
+2. Move contracts into `src/` alongside your source files
+3. Move components into `src/components/atoms|molecules|organisms/` with their contracts
+4. Move pages into `src/routes/<domain>/index.tsx` alongside their contracts
+5. Update all imports to reflect the new paths
+6. Create missing contracts for any routes that don't have one
+7. Run `strata check` to validate, `strata build` to generate types
+8. Run the linter — fix warnings until clean
+
+The key refactor: contracts and implementations must be co-located. If your contracts are in a separate tree from your source files, the lint rules can't connect them.
 
 ---
 
 ## Default and Redirect Routes
 
-When creating child routes for a layout:
+- `layout.default: child` — child renders at parent's URL (index route)
+- `layout.redirect: child` — parent URL redirects to child's URL
+- Never set a parameterised route as default or redirect
 
-- Check the parent's `_contract.yml` for `layout.default` or `layout.redirect`
-- If your route IS the default, your content renders at the parent's URL — no URL segment
-- If your route is the redirect target, the parent URL bounces to your URL
-- **NEVER** set a parameterised route as a default or redirect — they require runtime values
+These are **router-level concerns**. Implement them in the router configuration (e.g. `beforeLoad` redirect in TanStack Router, `redirect` in React Router loader), **not** in page components. The contract declares the intent; the router implements the behaviour.
 
----
-
-## Adding New Routes
-
-When asked to add a new route, prefer `strata add route <path>` which scaffolds the contract and stub for you. If building manually:
-
-1. Create the folder under the correct parent
-2. Create `_contract.yml` first — decide: does it have slots? what does it fill?
-3. If it has slots, create `_layout.tsx`
-4. Create the page component (`index.tsx`)
-5. Verify: does the parent need to know about this route? (default/redirect updates)
-6. Run `strata check` mentally: do all required ancestor slots have fills in the resolution chain?
-
-After scaffolding (CLI or manual), run `strata build` to regenerate types.
+```tsx
+// TanStack Router example — contract says redirect: devices
+createRoute({
+  path: '/reports',
+  beforeLoad: () => { throw redirect({ to: '/reports/devices' }); },
+});
+```
 
 ---
 
-## Adding New Components
+## Using the Linter as Feedback
 
-When asked to add a new component, prefer `strata add <level> <Name>` (e.g. `strata add molecule SearchBar`). If building manually:
+After implementing a route, **always run the linter to validate your work**:
 
-1. Determine the level: is it primitive (atom), a small composition (molecule), or a complex group (organism)?
-2. Create it in the correct folder (`components/atoms/`, `components/molecules/`, `components/organisms/`)
-3. Check that your imports respect the rank boundary
-4. Components in organisms/ can project into slots when used inside route components, but organisms themselves don't know about slots — that's the route's job
+```bash
+npx strata check        # contract-level validation (YAML ↔ YAML)
+npx eslint src/routes/  # route-level validation (TSX ↔ own YAML)
+```
+
+The linter will tell you exactly what's wrong:
+- Missing a `<FillSlot>` for a declared fill → `strata/route-filled`
+- Extra `<FillSlot>` not in your contract → `strata/route-overfill`
+- Required ancestor slot unfilled → `strata/contract-filled`
+- Filling a slot no ancestor declares → `strata/contract-overfill`
+
+Fix warnings until clean. If the linter is happy, the layout architecture is correct.
 
 ---
 
-## Creating Modals, Slide-overs, and Overlays
+## Understanding the Architecture
 
-**NEVER** render `<Dialog>`, `<Modal>`, or overlay components directly in a page. Instead:
+Before modifying routes, understand the full tree:
 
-- Configure the route's presentation mode in `_contract.yml` or route config
-- The layout reads the presentation mode and renders the `<Outlet />` accordingly (as overlay, slide panel, etc.)
-- The page component is identical regardless of presentation — it just fills slots and renders content
+```bash
+npx strata tree          # pretty-print the route/slot hierarchy
+npx strata tree --json   # machine-readable format
+```
+
+This shows every route, its slots, fills, and default/redirect declarations — giving you the complete picture of how layouts nest before you make changes.
 
 ---
 
 ## Key Principles
 
-1. **Pages fill slots. Layouts own chrome.** The page never decides WHERE its content renders.
-2. **The contract is the documentation.** Read `_contract.yml`, know everything.
-3. **Walk up for context.** Your available slots come from every ancestor, not just your parent.
+1. **Contract first.** Write `_contract.yml` before writing TSX.
+2. **Pages fill slots. Layouts own chrome.** The page never decides WHERE content renders.
+3. **The contract is the documentation.** Read `_contract.yml`, know everything about a route.
 4. **Filesystem is architecture.** Folder structure = route nesting = layout hierarchy.
-5. **Simplicity is valid.** Not every route needs slots. A leaf with no contract is fine.
-6. **Complexity is managed.** When you need it, the contract and slot system keeps it consistent.
+5. **Slots prevent drift.** If it needs consistent positioning, it's a slot, not inline CSS.
+6. **The linter is the enforcer.** Contract rules catch design errors. Route rules catch implementation gaps.
