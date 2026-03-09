@@ -1,0 +1,194 @@
+{
+  "id": "/",
+  "name": "Root Layout",
+  "param": null,
+  "slots": [
+    {
+      "name": "route-title",
+      "required": true
+    },
+    {
+      "name": "route-actions",
+      "required": false
+    },
+    {
+      "name": "tabs",
+      "required": false
+    },
+    {
+      "name": "filter-panel",
+      "required": false
+    },
+    {
+      "name": "context-menu",
+      "required": false
+    }
+  ],
+  "fills": [],
+  "defaultChild": null,
+  "redirectChild": "devices",
+  "children": [
+    {
+      "id": "dashboard",
+      "name": "dashboard",
+      "param": null,
+      "slots": [],
+      "fills": [
+        "route-title"
+      ],
+      "defaultChild": null,
+      "redirectChild": null,
+      "children": []
+    },
+    {
+      "id": "devices",
+      "name": "devices",
+      "param": null,
+      "slots": [],
+      "fills": [
+        "route-title",
+        "route-actions",
+        "filter-panel"
+      ],
+      "defaultChild": null,
+      "redirectChild": null,
+      "children": [
+        {
+          "id": "devices/new",
+          "name": "new",
+          "param": null,
+          "slots": [],
+          "fills": [
+            "route-title",
+            "route-actions"
+          ],
+          "defaultChild": null,
+          "redirectChild": null,
+          "children": []
+        },
+        {
+          "id": "devices/[id]",
+          "name": "[id]",
+          "param": "id",
+          "slots": [],
+          "fills": [
+            "route-title",
+            "route-actions",
+            "context-menu"
+          ],
+          "defaultChild": null,
+          "redirectChild": null,
+          "children": []
+        }
+      ]
+    },
+    {
+      "id": "reports",
+      "name": "reports",
+      "param": null,
+      "slots": [],
+      "fills": [
+        "tabs",
+        "route-title"
+      ],
+      "defaultChild": null,
+      "redirectChild": "reports/devices",
+      "children": [
+        {
+          "id": "reports/audit-logs",
+          "name": "audit-logs",
+          "param": null,
+          "slots": [],
+          "fills": [
+            "route-actions",
+            "filter-panel"
+          ],
+          "defaultChild": null,
+          "redirectChild": null,
+          "children": []
+        },
+        {
+          "id": "reports/devices",
+          "name": "devices",
+          "param": null,
+          "slots": [],
+          "fills": [
+            "route-title",
+            "route-actions",
+            "filter-panel"
+          ],
+          "defaultChild": null,
+          "redirectChild": null,
+          "children": []
+        },
+        {
+          "id": "reports/services",
+          "name": "services",
+          "param": null,
+          "slots": [],
+          "fills": [
+            "route-actions",
+            "filter-panel"
+          ],
+          "defaultChild": null,
+          "redirectChild": null,
+          "children": []
+        }
+      ]
+    },
+    {
+      "id": "search",
+      "name": "search",
+      "param": null,
+      "slots": [],
+      "fills": [
+        "route-title"
+      ],
+      "defaultChild": null,
+      "redirectChild": null,
+      "children": []
+    },
+    {
+      "id": "services",
+      "name": "services",
+      "param": null,
+      "slots": [],
+      "fills": [
+        "route-title",
+        "route-actions",
+        "filter-panel"
+      ],
+      "defaultChild": null,
+      "redirectChild": null,
+      "children": [
+        {
+          "id": "services/create",
+          "name": "create",
+          "param": null,
+          "slots": [],
+          "fills": [
+            "route-title",
+            "route-actions"
+          ],
+          "defaultChild": null,
+          "redirectChild": null,
+          "children": []
+        },
+        {
+          "id": "services/[id]",
+          "name": "[id]",
+          "param": "id",
+          "slots": [],
+          "fills": [
+            "route-title",
+            "route-actions",
+            "context-menu"
+          ],
+          "defaultChild": null,
+          "redirectChild": null,
+          "children": []
+        }
+      ]
+    }
+  ]
+}
